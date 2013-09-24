@@ -11,6 +11,7 @@ import Data.Aeson as Aeson
 import Data.Text (pack)
 import Handler.Players
 import Handler.ErrorCode
+import Network.HTTP.Types (badRequest400)
 
 data PostGames = PostGames { numberOfPlayers :: Int } deriving (Generic,Show)
 instance Aeson.FromJSON PostGames
@@ -18,62 +19,47 @@ instance Aeson.FromJSON PostGames
 data PostGamesId = PostGamesId { playerId :: Int } deriving (Generic,Show)
 instance Aeson.FromJSON PostGamesId
 
+illegalJoin :: Text -> ErrorCode
+illegalJoin txt = ErrorCode badRequest400 300 txt
+
 getGameR :: Int -> Handler RepJson
 getGameR gameId = do
-  yesod <- getYesod
-  allGames <- liftIO $ readMVar $ games yesod
-  g <- liftIO $ readMVar (allGames Map.! gameId)
+  g <- readGame gameId
   renderGame (gameId,g)
 
 postGameR :: Int -> Handler RepJson
 postGameR gameId = do
   postGamesId <- parseJsonBody_
-  player <- getPlayer (playerId postGamesId)
-  game <- getGame gameId
-  liftErrorCode illegalMove (join player g)
-  yesod <- getYesod
-  allGames <- liftIO $ takeMVar $ games yesod
-  withGame gameId (fmap (fmap (\g -> (gameId,g))) (joinIfPossible player))
+  player <- readPlayer (playerId postGamesId)
+  game <- takeGame gameId
+  let result = join player game
+  either (\t -> putGame gameId game >> returnError (illegalJoin t))
+         (\g -> putGame gameId g >> renderGame (gameId,g))
+         result
 
-getGame :: Int -> Handler Game
-getGame gameId = do
-  yesod <- getYesod
-  allGames <- liftIO $ readMVar $ games yesod
-  case Map.lookup gameId allGames of
-    Nothing -> returnError unknownGame
-    Just mvg -> liftIO $ readMVar mvg f
-
-putGame :: Int -> Game -> Handler ()
-putGame gameId g = liftIO $ putMVar
+readGameMVar :: Int -> Handler (MVar Game)
+readGameMVar gameId = do
   yesod <- getYesod
   allGames <- liftIO $ readMVar $ games yesod
   case Map.lookup gameId allGames of
     Nothing -> returnError unknownGame
-    Just mvg -> liftIO $ putMVar mvg g
+    Just mvg -> return mvg
 
-withGame :: (ToJSON a) => Int -> (Game -> Either ErrorCode (Game, a)) -> Handler RepJson
-withGame gameId f = do
-  yesod <- getYesod
-  allGames <- liftIO $ readMVar $ games yesod
-  res <- case Map.lookup gameId allGames of
-    Nothing -> return $ Left unknownGame
-    Just mvg -> liftIO $ updateMVar mvg f
-  renderResponse res
+readGame :: Int -> Handler Game
+readGame gameId = do
+  mvg <- readGameMVar gameId
+  liftIO $ readMVar mvg
 
-updateMVar :: MVar a -> (a -> Either ErrorCode (a,b)) -> IO (Either ErrorCode b)
-updateMVar mvar f = modifyMVar mvar (return . f') where
-    f' a = case f a of
-        Left err -> (a, Left err)
-        Right (a',b) -> (a', Right b)
-        
-renderResponse :: (ToJSON a) => Either ErrorCode a -> Handler RepJson
-renderResponse (Left err) = returnError err
-renderResponse (Right a) = jsonToRepJson a
+takeGame :: Int -> Handler Game
+takeGame gameId = do
+  mvg <- readGameMVar gameId
+  liftIO $ takeMVar mvg
 
-	
-joinIfPossible :: Maybe Player -> Game -> Either ErrorCode Game
-joinIfPossible Nothing _ = Left unknownPlayer
-joinIfPossible (Just player) g = liftErrorCode illegalMove (join player g)
+putGame :: Int -> Game -> Handler Game
+putGame gameId g = do
+  mvg <- readGameMVar gameId
+  liftIO $ putMVar mvg g
+
 
 postGamesR :: Handler RepJson
 postGamesR = do
@@ -82,9 +68,10 @@ postGamesR = do
   allGames <- liftIO $ takeMVar $ games yesod
   let g = newGame (numberOfPlayers postGame) 1
   mvg <- liftIO $ newMVar g
-  let allGames' = Map.insert (Map.size allGames) mvg allGames 
+  let newGameId = Map.size allGames 
+      allGames' = Map.insert newGameId mvg allGames 
   liftIO $ putMVar (games yesod) allGames'
-  renderGame (Map.size allGames, g)
+  renderGame (newGameId, g)
 
 getGamesR :: Handler RepJson
 getGamesR = do

@@ -35,8 +35,8 @@ getPlayersR = do
   allPlayers <- liftIO $ readMVar $ players yesod
   jsonToRepJson $ Import.map (playerToJSON render)(Map.elems allPlayers)
 
-getPlayer :: Int -> Handler Player
-getPlayer pId = do
+readPlayer :: Int -> Handler Player
+readPlayer pId = do
   yesod <- getYesod
   allPlayers <- liftIO $ readMVar $ players yesod
   case Map.lookup pId allPlayers of

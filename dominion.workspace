@@ -1,10 +1,28 @@
 <NotepadPlus>
-    <Project name="yesod">
+    <Project name="Dominion">
+        <Folder name="app">
+            <File name="app\main.hs" />
+        </Folder>
+        <Folder name="config">
+            <File name="config\favicon.ico" />
+            <File name="config\keter.yaml" />
+            <File name="config\robots.txt" />
+            <File name="config\routes" />
+            <File name="config\settings.yml" />
+        </Folder>
+        <Folder name="deploy">
+            <File name="deploy\Procfile" />
+        </Folder>
         <Folder name="Handler">
+            <File name="Handler\ErrorCode.hs" />
+            <File name="Handler\GamePlayers.hs" />
             <File name="Handler\Games.hs" />
             <File name="Handler\Home.hs" />
-            <File name="Handler\GamePlayers.hs" />
+            <File name="Handler\Moves.hs" />
             <File name="Handler\Players.hs" />
+        </Folder>
+        <Folder name="messages">
+            <File name="messages\en.msg" />
         </Folder>
         <Folder name="Model">
             <File name="Model\Card.hs" />
@@ -14,5 +32,50 @@
             <File name="Model\GameState.hs" />
             <File name="Model\Player.hs" />
         </Folder>
+        <Folder name="other">
+            <File name="other\Caesar.hs" />
+            <File name="other\Playground.hs" />
+        </Folder>
+        <Folder name="Settings">
+            <File name="Settings\Development.hs" />
+            <File name="Settings\StaticFiles.hs" />
+        </Folder>
+        <Folder name="static">
+            <Folder name="css">
+                <File name="static\css\bootstrap.css" />
+            </Folder>
+            <Folder name="img">
+                <File name="static\img\glyphicons-halflings-white.png" />
+                <File name="static\img\glyphicons-halflings.png" />
+            </Folder>
+        </Folder>
+        <Folder name="templates">
+            <File name="templates\default-layout-wrapper.hamlet" />
+            <File name="templates\default-layout.hamlet" />
+            <File name="templates\homepage.hamlet" />
+            <File name="templates\homepage.julius" />
+            <File name="templates\homepage.lucius" />
+            <File name="templates\normalize.lucius" />
+        </Folder>
+        <Folder name="tests">
+            <File name="tests\HomeTest.hs" />
+            <File name="tests\main.hs" />
+            <File name="tests\TestImport.hs" />
+        </Folder>
+        <File name=".ghci" />
+        <File name=".gitattributes" />
+        <File name=".gitignore" />
+        <File name=".project" />
+        <File name="Application.hs" />
+        <File name="devel.hs" />
+        <File name="dominion.cabal" />
+        <File name="dominion.lkshs" />
+        <File name="dominion.lkshw" />
+        <File name="dominion.workspace" />
+        <File name="Foundation.hs" />
+        <File name="Import.hs" />
+        <File name="README" />
+        <File name="Settings.hs" />
+        <File name="Setup.lhs" />
     </Project>
 </NotepadPlus>

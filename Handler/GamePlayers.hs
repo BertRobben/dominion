@@ -27,11 +27,18 @@ instance Aeson.FromJSON PostMoves
 
 postGamePlayersR :: Int -> Int -> Handler RepJson
 postGamePlayersR gameId playerId = do
+  player <- readPlayer playerId
   postGamePlayers <- parseJsonBody_
-  withGame gameId (liftDominionGame (validatePlayer playerId >> liftErrorCode illegalGamePlay (performMove postGamePlayers)))
+  game <- takeGame gameId
+  let result = do
+    validatePlayer player
+    liftErrorCode illegalGamePlay (liftDominionGame (performMove postGamePlayers) game)
+  either (\e -> putGame gameId game >> returnError e)
+         (\g -> putGame gameId g >> renderGamePlayer gameId game player)
+         result
 
-validatePlayer :: Int -> DominionGame -> Either ErrorCode DominionGame
-validatePlayer playerId dg = if pid (targetPlayer dg) == playerId then Right dg else Left illegalPlayer
+validatePlayer :: Player -> DominionGame -> Either ErrorCode DominionGame
+validatePlayer player dg = if targetPlayer dg == player then Right dg else Left illegalPlayer
 
 performMove :: PostGamePlayers -> DominionGame -> Either Text DominionGame
 performMove (PostGamePlayers (Just cs) Nothing) dg = do
@@ -50,4 +57,21 @@ lookupCard g name = findCard $ Import.map fst (board (dominionGameState g))
           findCard (c:cs) = if cardName c == name then Right c else findCard cs
           
 getGamePlayersR :: Int -> Int -> Handler RepJson
-getGamePlayersR gameId playerId = undefined
+getGamePlayersR gameId playerId = do
+  player <- readPlayer playerId
+  game <- readGame gameId
+  renderGamePlayer gameId game player
+
+  
+-----
+
+renderGame :: Int -> DominionGame -> Player -> Handler RepJson
+renderGame gameId game player = do
+	render <- getUrlRender
+	jsonToRepJson $ gameToJSON render gameId game player
+	
+gameToJSON render gid dg player = Aeson.object [
+  "status" .= "To be defined" 
+	"board" .= show $ board . dominionGameState g, 
+	"deck" .= "To be defined", 
+	"url" .= render (GamePlayersR gid (pid player))]

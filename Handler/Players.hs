@@ -2,57 +2,51 @@
 module Handler.Players where
 
 import Import
-import Control.Concurrent
-import Data.Map as Map
+import Control.Monad
 import Model.Player
 import GHC.Generics
 import Data.Aeson as Aeson
 import Data.Text (pack)
+import Handler.Resource
+import Handler.ErrorCode
+import Network.HTTP.Types (notFound404)
 
 data PostPlayers = PostPlayers { name :: Text } deriving (Generic,Show)
 instance Aeson.FromJSON PostPlayers
 
-postPlayersR :: Handler RepJson
+unknownPlayer :: ErrorCode
+unknownPlayer = ErrorCode notFound404 2 "Unknown player"
+
+instance Resource Player where
+  getMapFromApp app = (players app, unknownPlayer)
+  resourceId = pid
+  
+postPlayersR :: Handler Aeson.Value
 postPlayersR = do
   postPlayer <- parseJsonBody_
-  yesod <- getYesod
-  allPlayers <- liftIO $ takeMVar $ players yesod
-  let newPid = Map.size allPlayers
-      newPlayer = Player (name postPlayer) newPid
-      allPlayers' = Map.insert newPid newPlayer allPlayers 
-  liftIO $ putMVar (players yesod) allPlayers'
+  newPlayer <- insertResource (\i -> Player (name postPlayer) i)
   renderPlayer newPlayer
 
-getPlayerR :: Int -> Handler RepJson
+getPlayerR :: Int -> Handler Aeson.Value
 getPlayerR pId = do
-    p <- getPlayer pId
+    p <- readResource pId
     renderPlayer p
 
-getPlayersR :: Handler RepJson
+getPlayersR :: Handler Aeson.Value
 getPlayersR = do
-  yesod <- getYesod
-  render <- getUrlRender
-  allPlayers <- liftIO $ readMVar $ players yesod
-  jsonToRepJson $ Import.map (playerToJSON render)(Map.elems allPlayers)
+  allPlayers <- allResources
+  allJsonPlayers <- forM allPlayers renderPlayer
+  returnJson allJsonPlayers
 
-readPlayer :: Int -> Handler Player
-readPlayer pId = do
-  yesod <- getYesod
-  allPlayers <- liftIO $ readMVar $ players yesod
-  case Map.lookup pId allPlayers of
-    Nothing -> returnError unknownPlayer
-    Just mvar -> liftIO $ readMVar mvar
-
-renderPlayer :: Player -> Handler RepJson
+renderPlayer :: Player -> Handler Aeson.Value
 renderPlayer p = do
 	render <- getUrlRender
-	jsonToRepJson $ playerToJSON render p
-	
-playerToJSON render (Player name pid) = Aeson.object [
-	"playerName" .= name, 
-	"pid" .= pid, 
-	"url" .= render (PlayerR pid)]
+	return $ Aeson.object
+            [ "playerName" .= playerName p
+            , "pid" .= pid p
+            , "url" .= render (PlayerR (pid p))
+            ]
   
-initialPlayers :: Map.Map Int Player
-initialPlayers = Map.fromList (playerList ["Bert", "Neo", "Elise", "Thomas"])
-	where playerList names = Import.map (\(id,name) -> (id,Player (pack name) id)) (zip [0..] names)
+initialPlayers :: [Player]
+initialPlayers = playerList ["Bert", "Neo", "Elise", "Thomas"]
+	where playerList names = Import.map (\(i,n) -> Player (pack n) i) (zip [0..] names)

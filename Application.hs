@@ -11,18 +11,16 @@ import Yesod.Default.Main
 import Yesod.Default.Handlers
 import Network.Wai.Middleware.RequestLogger
 import Network.HTTP.Conduit (newManager, def)
-import Control.Monad.Logger (runLoggingT)
 import System.IO (stdout)
 import System.Log.FastLogger (mkLogger)
-import Data.Map as Map
-import Control.Concurrent (newMVar)
 
 -- Import all relevant handler modules here.
 -- Don't forget to add new modules to your cabal file!
-import Handler.Home
 import Handler.Games
 import Handler.Players
-import Handler.Moves
+import Handler.GamePlayers
+
+import Handler.Resource (newResourceMap)
 
 -- This line actually creates our YesodDispatch instance. It is the second half
 -- of the call to mkYesodData which occurs in Foundation.hs. Please see the
@@ -56,10 +54,11 @@ makeFoundation :: AppConfig DefaultEnv Extra -> IO App
 makeFoundation conf = do
     manager <- newManager def
     s <- staticSite
-    logger <- mkLogger True stdout    
-    p <- newMVar initialPlayers
-    g <- newMVar (initialGames initialPlayers)
-    let foundation = App conf s manager logger g p
+    logger <- mkLogger True stdout
+    ps <- newResourceMap initialPlayers
+    gs <- newResourceMap (initialGames initialPlayers)
+    let foundation = App conf s manager logger gs ps
+
     return foundation
 
 -- for yesod devel
@@ -67,6 +66,6 @@ getApplicationDev :: IO (Int, Application)
 getApplicationDev =
     defaultDevelApp loader makeApplication
   where
-    loader = loadConfig (configSettings Development)
+    loader = Yesod.Default.Config.loadConfig (configSettings Development)
         { csParseExtra = parseExtra
         }

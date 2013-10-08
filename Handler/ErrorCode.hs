@@ -8,16 +8,10 @@ import Network.HTTP.Types
 
 data ErrorCode = ErrorCode Status Int Text
 
-returnError :: ErrorCode -> Handler RepJson
+returnError :: ErrorCode -> Handler a
 returnError (ErrorCode s c msg) = do
-    repJson <- jsonToRepJson $ Aeson.object [ "errorCode" .= c, "message" .= msg ]
-    sendResponseStatus s repJson
-
-unknownGame :: ErrorCode
-unknownGame = ErrorCode notFound404 1 "Unknown game"
-
-unknownPlayer :: ErrorCode
-unknownPlayer = ErrorCode notFound404 2 "Unknown player"
+    rjson <- returnJson $ Aeson.object [ "errorCode" .= c, "message" .= msg ]
+    sendResponseStatus s rjson
 
 malformedBody :: ErrorCode
 malformedBody = ErrorCode badRequest400 3 "Malformed body"

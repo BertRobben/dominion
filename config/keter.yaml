@@ -1,4 +1,4 @@
-exec: ../dist/build/dominion/dominion
+exec: ../dist/build/yesod-playground/yesod-playground
 args:
     - production
 host: <<HOST-NOT-SET>>

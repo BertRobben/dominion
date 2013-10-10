@@ -6,9 +6,12 @@ import Model.Player
 import Model.DominionGamePlay
 import GHC.Generics
 import Data.Aeson as Aeson
+import Data.Aeson.Types (Pair)
 import Data.Text (pack)
+import Data.List (head)
+import Data.Map (fromList)
 import Model.Game
-import Model.GameState (board)
+import Model.GameState (board, playerState, playerHand, table, actions, money, buy, GameState, players)
 import Control.Monad
 import Handler.ErrorCode
 import Handler.Resource
@@ -72,11 +75,23 @@ getGamePlayersR gid pid = do
   
 -----
 
+instance Aeson.ToJSON Card where
+  toJSON c = toJSON $ cardName c
+  
 renderGamePlayer :: Game Id -> Player -> Handler Aeson.Value
 renderGamePlayer game player = do
-	render <- getUrlRender
-	return $ Aeson.object 
-            [ "status" .= pack "To be defined"
-            , "board" .= pack "To be defined"
-            ,	"deck" .= pack "To be defined"
-            ,	"url" .= render (GamePlayersR (gameId game) (pid player))]
+  render <- getUrlRender
+  let attrs = case dominionGame game of
+                Nothing -> [ "status" .= pack "Waiting for other players to join" ]
+                Just dg -> [ "board" .= Aeson.toJSON (board $ dominionGameState dg)
+                           , "table" .= Aeson.toJSON (table $ dominionGameState dg)
+                           , "hand" .= Aeson.toJSON (playerHand $ playerState player (dominionGameState dg))
+                           , "currentPlayer" .= render (PlayerR $ (pid . head . Model.GameState.players . dominionGameState) dg)] 
+                           ++ (activePlayerStats player (dominionGameState dg))                         
+  return $ Aeson.object (("url" .= render (GamePlayersR (gameId game) (pid player))) : attrs)
+  
+activePlayerStats :: Player -> GameState Card -> [Pair]
+activePlayerStats p gs = if isActivePlayer then stats else []
+  where currentPlayer = (head . Model.GameState.players) gs
+        isActivePlayer = p == currentPlayer
+        stats = [ "stats" .= fromList [ (pack "actions", actions gs), (pack "money", money gs), (pack "buy", buy gs) ] ]

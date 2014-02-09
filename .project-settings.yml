@@ -1,0 +1,22 @@
+module-template: ! 'module MODULE_NAME where
+
+'
+extensions:
+  GeneralizedNewtypeDeriving: true
+  TemplateHaskell: true
+  OverloadedStrings: true
+  GADTs: true
+  EmptyDataDecls: true
+  ImplicitPrelude: false
+  QuasiQuotes: true
+  TypeFamilies: true
+  MonomorphismRestriction: false
+  DeriveDataTypeable: true
+  CPP: true
+  MultiParamTypeClasses: true
+  FlexibleContexts: true
+environment: default
+cabal-file: project.cabal
+version: 1
+ghc-args: []
+excluded-modules: []

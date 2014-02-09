@@ -116,4 +116,4 @@ getFromList :: (Eq a) => a -> [(a,b)] -> b
 getFromList a ((aa,bb):rest) = if a == aa then bb else getFromList a rest
 
 updateList :: (Eq a) => a -> (b -> b) -> [(a,b)] -> [(a,b)]
-updateList a f list = map (\(aa,b) -> (aa, if a == aa then f b else b)) list
+updateList a f = map (\(aa,b) -> (aa, if a == aa then f b else b))

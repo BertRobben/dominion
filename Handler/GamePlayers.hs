@@ -20,7 +20,7 @@ import Handler.Games ()
 import Network.HTTP.Types (badRequest400)
 
 illegalGamePlay :: Text -> ErrorCode
-illegalGamePlay txt = ErrorCode badRequest400 400 txt
+illegalGamePlay = ErrorCode badRequest400 400
 
 illegalPlayer :: ErrorCode
 illegalPlayer = ErrorCode badRequest400 401 "Player is not playing in this game"
@@ -41,7 +41,7 @@ postGamePlayersR gid pid = do
   game <- takeResource gid
   let result = asDominionGame game >>= validatePlayer player >>= performMove postGamePlayers
   either (\e -> putResource game >> returnError e)
-         (\dg -> putResource (asGame gid dg) >>= (\g -> renderGamePlayer g player))
+         (\dg -> putResource (asGame gid dg) >>= (`renderGamePlayer` player))
          result
 
 asDominionGame :: Game Id -> Either ErrorCode DominionGame
@@ -87,7 +87,7 @@ renderGamePlayer game player = do
                            , "table" .= Aeson.toJSON (table $ dominionGameState dg)
                            , "hand" .= Aeson.toJSON (playerHand $ playerState player (dominionGameState dg))
                            , "currentPlayer" .= render (PlayerR $ (pid . head . Model.GameState.players . dominionGameState) dg)] 
-                           ++ (activePlayerStats player (dominionGameState dg))                         
+                           ++ activePlayerStats player (dominionGameState dg)
   return $ Aeson.object (("url" .= render (GamePlayersR (gameId game) (pid player))) : attrs)
   
 activePlayerStats :: Player -> GameState Card -> [Pair]

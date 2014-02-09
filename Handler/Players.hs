@@ -1,15 +1,15 @@
 {-# LANGUAGE DeriveGeneric #-}
 module Handler.Players where
 
-import Import
-import Control.Monad
-import Model.Player
-import GHC.Generics
-import Data.Aeson as Aeson
-import Data.Text (pack)
-import Handler.Resource
-import Handler.ErrorCode
-import Network.HTTP.Types (notFound404)
+import           Control.Monad
+import           Data.Aeson         as Aeson
+import           Data.Text          (pack)
+import           GHC.Generics
+import           Handler.ErrorCode
+import           Handler.Resource
+import           Import
+import           Model.Player
+import           Network.HTTP.Types (notFound404)
 
 data PostPlayers = PostPlayers { name :: Text } deriving (Generic,Show)
 instance Aeson.FromJSON PostPlayers
@@ -20,17 +20,17 @@ unknownPlayer = ErrorCode notFound404 2 "Unknown player"
 instance Resource Player where
   getMapFromApp app = (players app, unknownPlayer)
   resourceId = pid
-  
+
 postPlayersR :: Handler Aeson.Value
 postPlayersR = do
   postPlayer <- parseJsonBody_
-  newPlayer <- insertResource (\i -> Player (name postPlayer) i)
+  newPlayer <- insertResource (Player (name postPlayer))
   renderPlayer newPlayer
 
 getPlayerR :: Int -> Handler Aeson.Value
 getPlayerR pId = do
-    p <- readResource pId
-    renderPlayer p
+  p <- readResource pId
+  renderPlayer p
 
 getPlayersR :: Handler Aeson.Value
 getPlayersR = do
@@ -40,13 +40,13 @@ getPlayersR = do
 
 renderPlayer :: Player -> Handler Aeson.Value
 renderPlayer p = do
-	render <- getUrlRender
-	return $ Aeson.object
+  render <- getUrlRender
+  return $ Aeson.object
             [ "playerName" .= playerName p
             , "pid" .= pid p
             , "url" .= render (PlayerR (pid p))
             ]
-  
+
 initialPlayers :: [Player]
 initialPlayers = playerList ["Bert", "Neo", "Elise", "Thomas"]
-	where playerList names = Import.map (\(i,n) -> Player (pack n) i) (zip [0..] names)
+  where playerList names = Import.map (\(i,n) -> Player (pack n) i) (zip [0..] names)

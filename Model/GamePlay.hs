@@ -26,7 +26,7 @@ instance Functor u => Monad (GamePlay s u) where
   return a = GamePlay (\s -> (Left a,s))
   f >>= g = GamePlay (\s -> case playGame f s of
                     (Left a, s') -> playGame (g a) s'
-                    (Right u, s') -> (Right $ fmap (\gpa -> gpa >>= g) u, s')) 
+                    (Right u, s') -> (Right $ fmap (>>= g) u, s')) 
 
 
 getState :: GamePlay s u s
@@ -36,7 +36,7 @@ updateState :: (s -> s) -> GamePlay s u ()
 updateState f = GamePlay (\s -> (Left (), f s))
 
 userInput :: u (GamePlay s u a) -> GamePlay s u a
-userInput u = GamePlay (\s -> (Right $ u, s))
+userInput u = GamePlay (\s -> (Right u, s))
 
 instance Functor u => Functor (GamePlay s u) where
   fmap = liftM

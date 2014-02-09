@@ -19,9 +19,9 @@ newResourceMap aa = do
 allResources :: (Resource a) => Handler [a]
 allResources = do
   yesod <- getYesod
-  let (resourceMap, _) = getMapFromApp yesod 
+  let (resourceMap, _) = getMapFromApp yesod
   resources <- liftIO $ readMVar resourceMap
-  forM (Map.elems resources) (\mvar -> liftIO $ readMVar mvar)
+  forM (Map.elems resources) (liftIO . readMVar)
   
 readResourceMVar :: (Resource a) => Id -> Handler (MVar a)
 readResourceMVar rid = do

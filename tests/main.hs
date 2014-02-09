@@ -10,7 +10,7 @@ import Yesod.Test
 import Test.Hspec (hspec)
 import Application (makeFoundation)
 
-import HomeTest
+import PlayersTest
 
 main :: IO ()
 main = do

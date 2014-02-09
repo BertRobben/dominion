@@ -2,6 +2,7 @@
 module Handler.Games where
 
 import Import
+import Prelude (head)
 import Control.Monad (forM)
 import Model.Game
 import Model.Player
@@ -26,7 +27,7 @@ instance Resource (Game Id) where
   resourceId = gameId
  
 illegalJoin :: Text -> ErrorCode
-illegalJoin txt = ErrorCode badRequest400 300 txt
+illegalJoin = ErrorCode badRequest400 300
 
 getGameR :: Int -> Handler Aeson.Value
 getGameR gid = do
@@ -46,7 +47,7 @@ postGameR gid = do
 postGamesR :: Handler Aeson.Value
 postGamesR = do
   postGame <- parseJsonBody_
-  game <- insertResource (\gid -> newGame (numberOfPlayers postGame) 1 gid)
+  game <- insertResource (newGame (numberOfPlayers postGame) 1)
   renderGame game
 
 getGamesR :: Handler Aeson.Value
@@ -54,21 +55,21 @@ getGamesR = do
   allGames <- allResources
   allJsonGames <- forM allGames renderGame
   returnJson allJsonGames
-   
+
 
 initialGames :: [Player] -> [Game Id]
 initialGames ps = [g0, g1, g2] where
     g0 = newGame 2 0 0
-    g1 = rightGame $ join (ps!!0) (newGame 2 1 1)
+    g1 = rightGame $ join (head ps) (newGame 2 1 1)
     g2 = rightGame $ join (ps!!1) (newGame 2 2 2) >>= join (ps!!2)
     rightGame (Right g) = g
-	
+
 ---- json rep
 
 renderGame :: Game Id -> Handler Aeson.Value
 renderGame g = do
-	render <- getUrlRender
-	return $ Aeson.object 
+  render <- getUrlRender
+  return $ Aeson.object 
           [ "status" .= show g
           , "gid" .= gameId g
           , "url" .= render (GameR (gameId g))

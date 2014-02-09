@@ -15,6 +15,6 @@ instance Show Player where
   show p = unpack $ playerName p
 
 instance Eq Player where
-  p1 == p2 = (pid p1) == (pid p2)
+  p1 == p2 = pid p1 == pid p2
 
   

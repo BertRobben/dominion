@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveGeneric,TypeSynonymInstances,FlexibleInstances,OverloadedStrings #-}
+{-# LANGUAGE TypeSynonymInstances,FlexibleInstances,OverloadedStrings #-}
 module Model.Game (
 
   Game,
@@ -21,10 +21,10 @@ import Data.Text (Text)
 newtype Game a = Game (a, Either (Int, Int, [Player]) DominionGame)
 
 instance Show (Game a) where
-  show (Game (_,g)) = either (\(n,_,ps) -> "Waiting for " ++ (show n) ++ " players to join."
-                                        ++ "\n" 
-                                        ++ "Current players: " ++ (show ps))
-                           (\_ -> "Game in progress.")
+  show (Game (_,g)) = either (\(n,_,ps) -> "Waiting for " ++ show n ++ " players to join."
+                                        ++ "\n"
+                                        ++ "Current players: " ++ show ps)
+                           (const "Game in progress.")
                            g 
   
 newGame :: Int -> Int -> a -> Game a
@@ -33,7 +33,7 @@ newGame n seed a = Game (a, Left (n, seed, []))
 gameId :: Game a -> a
 gameId (Game (gid,_)) = gid
 
-join :: Player -> (Game a) -> Either Text (Game a)
+join :: Player -> Game a -> Either Text (Game a)
 join p (Game (gid, Left startUp)) = Right $ Game (gid, addPlayer p startUp) 
 join _ _ = Left "Game is in progress. It's no longer possible to join."
 

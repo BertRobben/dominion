@@ -56,7 +56,7 @@ gold :: Card
 gold = moneyCard "Gold" 6 3
 
 victory :: Text -> Int -> Int -> Card
-victory n c vp = card n c [Victory (\_ -> vp)]
+victory n c vp = card n c [Victory (const vp)]
 
 estate :: Card
 estate = victory "Estate" 2 1
@@ -66,7 +66,7 @@ province :: Card
 province = victory "Province" 8 6
 
 curse :: Card
-curse = card "Curse" 0 [Victory (\_ -> -1)]
+curse = card "Curse" 0 [Victory (const (-1))]
 
 -- 
 -- action cards --
@@ -86,8 +86,8 @@ cellar = actionCard "Cellar" 2 cellarGamePlay
   where cellarGamePlay p = do
                             increaseActions 1
                             h <- hand p 
-                            cards <- choose "Choose cards to discard" p h (\_ -> Nothing)
-                            forM_ cards (\c -> discardCardFromHand c p)
+                            cards <- choose "Choose cards to discard" p h (const Nothing)
+                            forM_ cards (`discardCardFromHand` p)
                             forM_ cards (\_ -> drawCardAndPutInHand p)
 
 
@@ -104,7 +104,7 @@ chapel = actionCard "Chapel" 2 chapelGamePlay
 moat :: Card
 moat = card "Moat" 2 [Reaction moatReaction, Action moatAction]
   where moatAction p = drawCardAndPutInHand p >> drawCardAndPutInHand p
-        moatReaction _ = \_ -> return ()
+        moatReaction _ _ = return ()
 
 -- Chancellor Action  $3  +$2
 -- You may immediately put your deck into your discard pile.
@@ -119,19 +119,19 @@ chancellor = actionCard "Chancellor" 3 chancellorGamePlay
           forM_ [1..cnt] (\_ -> drawAndDiscard p)
         drawAndDiscard p = do
           mc <- drawCard p
-          maybe (return ()) (\c -> discardCard c p) mc 
+          maybe (return ()) (`discardCard` p) mc 
 
 
 -- Village  Action  $3  +1 Card; +2 Actions.
 village :: Card
 village = actionCard "Village" 3 villageGamePlay
-  where villageGamePlay p = (increaseActions 2) >> (drawCardAndPutInHand p)
+  where villageGamePlay p = increaseActions 2 >> drawCardAndPutInHand p
 
 
 -- Woodcutter Action  $3  +1 Buy; +$2.
 woodcutter :: Card
 woodcutter = actionCard "Woodcutter" 3 woodCutterGamePlay
-  where woodCutterGamePlay _ = (increaseBuys 1) >> (increaseMoney 2)
+  where woodCutterGamePlay _ = increaseBuys 1 >> increaseMoney 2
 
 
 -- Workshop Action  $3  Gain a card costing up to $4.
@@ -149,12 +149,12 @@ boardCards n = do
   return (map fst $ filter (\p -> snd p <= n) b)
 
 exactly :: Int -> [a] -> Maybe Text
-exactly n cs = if length cs == n then Nothing else Just $ pack ("Choose exactly " ++ (show n) ++ " card(s) please.")
+exactly n cs = if length cs == n then Nothing else Just $ pack ("Choose exactly " ++ show n ++ " card(s) please.")
 
 -- Bureaucrat Action � Attack $4  Gain a silver card; put it on top of your deck. Each other player reveals a Victory card from his hand and puts it on his deck (or reveals a hand with no Victory cards).
 bureaucrat :: Card
 bureaucrat = attackCard "Bureaucrat" 4 bureaucratGamePlay bureaucratAttack
-  where bureaucratGamePlay p = (takeCardFromBoard silver) >> (putCardOnTopOfDeck silver p)
+  where bureaucratGamePlay p = takeCardFromBoard silver >> putCardOnTopOfDeck silver p
         bureaucratAttack _ victim = do
           h <- hand victim
           let victoryCardsInHand = filter isVictory h
@@ -178,7 +178,7 @@ feast = actionCard "Feast" 4 feastGamePlay
 --  Gardens Victory $4  Worth 1 Victory for every 10 cards in your deck (rounded down).
 gardens :: Card
 gardens = card "Gardens" 4 [Victory countPoints]
-  where countPoints cards = (length cards) `div` 10
+  where countPoints cards = length cards `div` 10
     
 
 -- Militia  Action � Attack $4  +$2
@@ -192,7 +192,7 @@ militia = attackCard "Militia" 4 militiaAction militiaAttack
         discardDownToThree p victim = do
           currentHand <- hand victim
           cards <- choose "Choose cards to discard (down to 3 in hand)" p currentHand (\cs -> if length currentHand == length cs + 3 then Nothing else Just "Discard until 3 cards left please")
-          forM_ cards (\c -> discardCardFromHand c victim)           
+          forM_ cards (`discardCardFromHand` victim)           
  
 -- Moneylender  Action  $4  Trash a Copper  from your hand. If you do, +$3.
 moneylender :: Card
@@ -212,12 +212,12 @@ remodel = actionCard "Remodel" 4 remodelGamePlay
   where remodelGamePlay p = do
           currentHand <- hand p
           cards <- choose "Choose card to thrash" p currentHand (upTo 1)
-          if cards == [] then return () else remodelCard (head cards) p
+          unless (null cards) $ remodelCard (head cards) p
         remodelCard c p = do
           takeCardFromHand c p >> trashCard c
           cs <- boardCards (cardValue c + 2)
           cards <- choose "Choose card to gain" p cs (exactly 1)
-          (takeCardFromBoard (head cards) >> discardCard (head cards) p)
+          takeCardFromBoard (head cards) >> discardCard (head cards) p
   
 -- Smithy Action  $4  +3 Cards.
 smithy :: Card
@@ -236,7 +236,7 @@ spy = attackCard "Spy" 4 spyAction spyAttack
           mc <- drawCard victim
           maybe (return ()) (spyOnCard spyPlayer victim) mc
         spyOnCard spyPlayer victim c = do
-          putBack <- decide (pack ("Put " ++ (show c) ++ " back on top of " ++ (show victim) ++ "'s deck?")) spyPlayer
+          putBack <- decide (pack ("Put " ++ show c ++ " back on top of " ++ show victim ++ "'s deck?")) spyPlayer
           (if putBack then putCardOnTopOfDeck else discardCard) c victim
 
 
@@ -245,10 +245,10 @@ thief :: Card
 thief = attackCard "Thief" 4 (\_ -> return ()) thiefAttack
   where thiefAttack thiefPlayer victim = do
           cs <- drawCards victim 2
-          toTrash <- choose (pack ("Choose card to steal from " ++ show (victim))) thiefPlayer (filter isTreasure cs) (upTo 1)
+          toTrash <- choose (pack ("Choose card to steal from " ++ show victim)) thiefPlayer (filter isTreasure cs) (upTo 1)
           forM_ toTrash (gainOrTrash thiefPlayer)
         gainOrTrash thiefPlayer c = do
-          gain <- decide (pack ("Do you want to gain a " ++ (show c) ++ " ?")) thiefPlayer
+          gain <- decide (pack ("Do you want to gain a " ++ show c ++ " ?")) thiefPlayer
           if gain then discardCard c thiefPlayer else trashCard c
 
           
@@ -305,12 +305,12 @@ library = actionCard "Library" 5 playLib
             maybe (return ()) (decideOnCard p) mc
         decideOnCard p c = do
           sa <- use p c
-          if sa then (putCardInHand c p >> playLib p) else (playLib p >> discardCard c p)
-        use p c = 
-          if isAction c 
+          if sa then putCardInHand c p >> playLib p else playLib p >> discardCard c p
+        use p c =
+          if isAction c
             then decide (pack ("Put " ++ show c ++ " in hand?")) p
             else return True
-                  
+
 
 -- Market Action  $5  +1 Card; +1 Action; +1 Buy; +$1.
 market :: Card
@@ -326,7 +326,7 @@ mine = actionCard "Mine" 5 playMine
           unless (null treasureCard) $ do
             trashCard (head treasureCard)
             b <- currentBoard
-            let treasures = map fst $ filter (\(c,n) -> n > 0 && isTreasure c && cardValue c <= 3 + (cardValue (head treasureCard))) b 
+            let treasures = map fst $ filter (\(c,n) -> n > 0 && isTreasure c && cardValue c <= 3 + cardValue (head treasureCard)) b 
             newTreasure <- choose "Choose treasure to gain" p treasures (exactly 1)
             putCardInHand (head newTreasure) p
 
@@ -350,8 +350,7 @@ adventurer = actionCard "Adventurer" 6 (adventurerAction 2)
         adventurerAction n p = do
           mc <- drawCard p
           maybe (return ()) (withCard n p) mc
-        withCard n p c = do
-          if isTreasure c 
-            then (adventurerAction (n-1) p) >> (putCardInHand c p)
-            else (adventurerAction n p) >> (discardCard c p)
+        withCard n p c = if isTreasure c
+          then adventurerAction (n-1) p >> putCardInHand c p
+          else adventurerAction n p >> discardCard c p
  
